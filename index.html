@@ -56,6 +56,32 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;color:var(--ink);bac
 .note.warn{border-left-color:var(--livec);}
 .dayhd{font-family:'IBM Plex Mono';font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--soft);margin:18px 2px 8px;display:flex;align-items:center;gap:9px;}
 .dayhd::after{content:"";flex:1;height:1px;background:var(--hair);}
+.tbadge{font-family:'Inter';font-size:9px;font-weight:700;letter-spacing:.08em;color:#fff;background:var(--livec);padding:2px 7px;border-radius:999px;}
+.tbadge.tmr{background:var(--soft);}
+.jump{display:flex;align-items:center;gap:8px;background:rgba(224,58,47,.1);border:1px solid #f3b3ad;color:var(--livec);font-size:12px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;padding:10px 13px;border-radius:7px;margin-bottom:14px;cursor:pointer;}
+.jump .dot{background:var(--livec);}
+.hero{background:var(--ink);color:var(--paper);border-radius:8px;padding:14px 16px;margin-bottom:16px;}
+.hero .lab{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#b9bccd;margin-bottom:8px;}
+.hero .ht{font-family:'Anton';font-size:18px;text-transform:uppercase;line-height:1.05;}
+.hero .hmeta{font-size:11.5px;color:#cfd2e0;margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;}
+.hero .cd{font-family:'IBM Plex Mono';font-weight:600;color:var(--gold);}
+@keyframes flash{0%{background:#FFF1CF;}100%{background:var(--panel);}}
+.card.flash{animation:flash 1.6s ease;}
+.pinhd{font-family:'Anton';font-size:15px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink);display:flex;align-items:center;gap:8px;margin:4px 2px 8px;}
+.pinhd .s{color:var(--gold);}
+.followbar{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin:2px 0 14px;}
+.fchip{display:inline-flex;align-items:center;gap:7px;background:var(--ink);color:var(--paper);font-size:12px;font-weight:600;padding:6px 8px 6px 11px;border-radius:999px;}
+.fchip button{background:rgba(255,255,255,.18);border:none;color:#fff;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center;}
+.clearall{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;color:var(--soft);background:none;border:none;cursor:pointer;text-decoration:underline;}
+.gtitle{font-family:'IBM Plex Mono';font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--soft);margin:16px 2px 6px;}
+.tgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.teamrow{display:flex;align-items:center;gap:9px;background:#fff;border:1px solid var(--hair);border-radius:7px;padding:9px 11px;cursor:pointer;font-size:13px;font-weight:500;}
+.teamrow.onf{border-color:var(--gold);background:#FFFBF0;}
+.teamrow .sbtn{width:18px;height:18px;flex:0 0 auto;color:var(--hair);}
+.teamrow.onf .sbtn{color:var(--gold);}
+.teamrow .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tag.foll{color:var(--gold);border-color:var(--gold);}
+@media(max-width:560px){.tgrid{grid-template-columns:1fr;}}
 .sechd{font-family:'Anton';font-size:18px;text-transform:uppercase;color:var(--ink);margin:22px 0 6px;}
 .card{position:relative;background:var(--panel);border:1px solid var(--hair);border-radius:6px;padding:11px 14px 11px 18px;margin-bottom:8px;overflow:hidden;}
 .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--usa);}
@@ -135,7 +161,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;color:var(--ink);bac
     <div class="hd-top">
       <div>
         <h1 class="wordmark">World Cup <span class="yr">26</span></h1>
-        <div class="hd-sub">Canada · Mexico · USA — All times ET</div>
+        <div class="hd-sub" id="subtz">Canada · Mexico · USA</div>
       </div>
       <div class="statusbar">
         <span id="status" class="pill">Loading…</span>
@@ -230,6 +256,10 @@ const ALL=(()=>{const out=[];DATA.forEach((st,si)=>st.days.forEach(d=>d.games.fo
   out.push(m);
 })));return out.sort((a,b)=>a.iso-b.iso);})();
 ALL.forEach((m,i)=>m.idx=i);
+/* roster of the 48 teams (from group stage) + their group */
+const TEAM_GROUP={};const TEAMS=[];
+ALL.forEach(m=>{if(m.knock)return;[m.home,m.away].forEach(t=>{if(!(t in TEAM_GROUP)){TEAM_GROUP[t]=m.group;TEAMS.push(t);}});});
+TEAMS.sort((a,b)=>a.localeCompare(b));
 
 const ALIAS={"turkey":"turkiye","turkiye":"turkiye","cape verde":"cabo verde","cabo verde":"cabo verde","dr congo":"dr congo","congo dr":"dr congo","democratic republic of congo":"dr congo","congo":"dr congo","ivory coast":"ivory coast","cote divoire":"ivory coast","cote d'ivoire":"ivory coast","south korea":"south korea","korea republic":"south korea","korea":"south korea","usa":"usa","united states":"usa","united states of america":"usa","us":"usa","bosnia and herzegovina":"bosnia","bosnia & herzegovina":"bosnia","bosnia":"bosnia","czechia":"czechia","czech republic":"czechia"};
 function canon(s){let x=(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/&/g,"and").replace(/[.\u2019']/g,"").replace(/\s+/g," ").trim();return ALIAS[x]||x;}
@@ -256,18 +286,44 @@ function mergeResults(prev,arr,opts={}){
 }
 function resultFor(m,live){const lv=live[pairKey(m.home,m.away)];if(!lv)return null;const direct=canon(m.home)===lv.h;return{hs:direct?lv.hs:lv.as,as:direct?lv.as:lv.hs,st:lv.st,min:lv.min,manual:lv.manual};}
 
-const etKeyFmt=new Intl.DateTimeFormat("en-CA",{timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit"});
-const etKey=ms=>etKeyFmt.format(ms);
-function relLabel(iso){const now=Date.now(),diff=iso-now;if(diff<=0)return"";const today=etKey(now),tmr=etKey(now+864e5);if(etKey(iso)===today){const h=diff/3.6e6;return h<1?`in ${Math.max(1,Math.round(diff/6e4))} min`:`in ${Math.round(h)}h`;}if(etKey(iso)===tmr)return"Tomorrow";return"";}
+/* All times derived from correct UTC instants, shown in the device's local timezone. */
+const fmtT=new Intl.DateTimeFormat([],{hour:"numeric",minute:"2-digit"});
+const fmtWD=new Intl.DateTimeFormat([],{weekday:"short"});
+const fmtMD=new Intl.DateTimeFormat([],{month:"short",day:"numeric"});
+const fmtFull=new Intl.DateTimeFormat([],{weekday:"long",month:"long",day:"numeric"});
+const TZ_ABBR=(()=>{try{const p=new Intl.DateTimeFormat([],{timeZoneName:"short"}).formatToParts(Date.now()).find(x=>x.type==="timeZoneName");return p?p.value:"local";}catch(e){return "local";}})();
+function fmtTime(iso){return fmtT.format(iso);}
+function shortDate(iso){return fmtWD.format(iso)+" "+fmtMD.format(iso);}
+function localKey(ms){const d=new Date(ms);return d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate();}
+function dayHeadHTML(iso){const k=localKey(iso),tk=localKey(Date.now()),tmr=localKey(Date.now()+864e5);let b=k===tk?'<span class="tbadge">Today</span>':k===tmr?'<span class="tbadge tmr">Tomorrow</span>':"";return `<div class="dayhd">${fmtFull.format(iso)} ${b}</div>`;}
+function relLabel(iso){const now=Date.now(),diff=iso-now;if(diff<=0)return"";const tk=localKey(now),tmr=localKey(now+864e5),k=localKey(iso);if(k===tk){const h=diff/3.6e6;return h<1?`in ${Math.max(1,Math.round(diff/6e4))} min`:`in ${Math.round(h)}h`;}if(k===tmr)return"Tomorrow";return"";}
 
 /* ---------- state ---------- */
-const LS_LIVE="wc26_live_v1",LS_UPD="wc26_upd_v1";
+const LS_LIVE="wc26_live_v1",LS_UPD="wc26_upd_v1",LS_FOLLOW="wc26_follow_v1";
 let live=loadLive();
-let state={tab:"live",updated:loadUpd(),loading:false,apiMsg:null,fGroup:"all",fSearch:"",fCan:false,fKey:false,editIdx:null,editH:0,editA:0};
+let follow=loadFollow();
+let state={tab:"live",updated:loadUpd(),loading:false,apiMsg:null,fGroup:"all",fSearch:"",fCan:false,fKey:false,tSearch:"",editIdx:null,editH:0,editA:0};
 function loadLive(){try{const s=localStorage.getItem(LS_LIVE);if(s)return JSON.parse(s);}catch(e){}return mergeResults({},SEED);}
 function saveLive(){try{localStorage.setItem(LS_LIVE,JSON.stringify(live));}catch(e){}}
 function loadUpd(){try{return +localStorage.getItem(LS_UPD)||null;}catch(e){return null;}}
 function saveUpd(t){try{localStorage.setItem(LS_UPD,String(t));}catch(e){}}
+function loadFollow(){try{const s=localStorage.getItem(LS_FOLLOW);if(s)return new Set(JSON.parse(s));}catch(e){}return new Set();}
+function saveFollow(){try{localStorage.setItem(LS_FOLLOW,JSON.stringify([...follow]));}catch(e){}}
+function isFollowed(team){return follow.has(canon(team));}
+function toggleFollow(team){const c=canon(team);if(follow.has(c))follow.delete(c);else follow.add(c);saveFollow();}
+function matchFollowed(m){return !m.knock&&(isFollowed(m.home)||isFollowed(m.away));}
+function isLiveM(m){const r=resultFor(m,live);return r&&(r.st==="LIVE"||r.st==="HT");}
+function nextForFollowed(){
+  const now=Date.now(),picks=new Map();
+  [...follow].forEach(ct=>{
+    const cand=ALL.filter(m=>!m.knock&&(canon(m.home)===ct||canon(m.away)===ct))
+      .map(m=>({m,r:resultFor(m,live)}))
+      .filter(x=>(x.r&&(x.r.st==="LIVE"||x.r.st==="HT"))||(x.m.iso>now&&!(x.r&&x.r.st==="FT")))
+      .sort((a,b)=>a.m.iso-b.m.iso);
+    if(cand.length)picks.set(cand[0].m.idx,cand[0].m);
+  });
+  return [...picks.values()].sort((a,b)=>{const la=isLiveM(a)?0:1,lb=isLiveM(b)?0:1;return la-lb||a.iso-b.iso;});
+}
 
 /* ---------- live fetch via free CORS API (best effort) ---------- */
 async function fetchDay(dateStr){
@@ -289,7 +345,8 @@ async function fetchLive(){
   if(state.loading)return; state.loading=true; render();
   try{
     const now=Date.now();
-    const days=[etKey(now),etKey(now-864e5),etKey(now-2*864e5)];
+    const isoDay=ms=>new Date(ms).toISOString().slice(0,10);
+    const days=[isoDay(now+864e5),isoDay(now),isoDay(now-864e5),isoDay(now-2*864e5)];
     let evs=[];
     for(const d of days){try{evs=evs.concat(await fetchDay(d));}catch(e){}}
     const wc=evs.filter(e=>e&&/world cup/i.test(e.strLeague||"")&&e.strHomeTeam&&e.strAwayTeam);
@@ -311,27 +368,33 @@ async function fetchLive(){
 }
 
 /* ---------- rendering ---------- */
+let snapshot={},changedSet=new Set();
+function liveSig(pk){const v=live[pk];return v?`${v.hs}-${v.as}-${v.st}`:"";}
+function computeChanged(){changedSet=new Set();for(const pk in live){const s=liveSig(pk);if(snapshot[pk]!==undefined&&snapshot[pk]!==s)changedSet.add(pk);}}
+function updateSnapshot(){snapshot={};for(const pk in live)snapshot[pk]=liveSig(pk);}
 const PIN='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 21s-7-6.2-7-11a7 7 0 1 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>';
 function esc(s){return(s+"").replace(/&/g,"&amp;").replace(/</g,"&lt;");}
-function cardHTML(m){
+function cardHTML(m,anchor){
   const r=resultFor(m,live);
   const isLive=r&&(r.st==="LIVE"||r.st==="HT");
   const done=r&&r.st==="FT";
-  const cls=`card ${m.knock?"ko":m.host}${isLive?" islive":""}${m.editable?" editable":""}`;
+  const pk=pairKey(m.home,m.away);
+  const flash=changedSet.has(pk)?" flash":"";
+  const cls=`card ${m.knock?"ko":m.host}${isLive?" islive":""}${m.editable?" editable":""}${flash}`;
   const hw=done&&r.hs>r.as,aw=done&&r.as>r.hs;
-  const dshort=m.dateLabel.split(",")[0].slice(0,3)+" "+m.dateLabel.split(" ").slice(-2).join(" ");
   const scoreOrVs=r?`<span class="sc ${isLive?"livesc":""}">${r.hs}–${r.as}</span>`:`<span class="vs">v</span>`;
   let badge;
-  if(isLive)badge=`<span class="lv"><span class="dot"></span> ${r.st==="HT"?"HALF-TIME":("LIVE "+(r.min||""))}</span>`;
+  if(isLive)badge=`<span class="lv"><span class="dot"></span> ${r.st==="HT"?"HALF-TIME":("LIVE"+(r.min?" "+r.min:""))}</span><span class="upr" style="color:var(--soft)">KO ${fmtTime(m.iso)}</span>`;
   else if(done)badge=`<span class="ft">Full Time</span>`;
-  else badge=`<span><span class="up">${m.time.replace(":00","")} ET</span><span class="upr">${relLabel(m.iso)}</span></span>`;
-  return `<div class="${cls}" data-idx="${m.idx}">
+  else badge=`<span><span class="up">${fmtTime(m.iso)}</span><span class="upr">${relLabel(m.iso)}</span></span>`;
+  return `<div class="${cls}" data-idx="${m.idx}"${anchor?' id="live-anchor"':''}>
     <div class="crow">
-      <div class="ctime">${m.time}<small>${dshort}</small></div>
+      <div class="ctime">${fmtTime(m.iso)}<small>${shortDate(m.iso)}</small></div>
       <div class="fix">
         <div class="teams"><span class="t ${hw?"win":""}">${esc(m.home)}</span>${scoreOrVs}<span class="t ${aw?"win":""}">${esc(m.away)}</span></div>
         <div class="meta">
           <span class="tag">${m.knock?m.tag:("Grp "+m.group)}</span>
+          ${matchFollowed(m)?'<span class="tag foll">★</span>':""}
           ${m.star?`<span class="tag star">★ ${m.star}</span>`:""}
           ${r&&r.manual?`<span class="tag man">edited</span>`:""}
           <span class="loc">${PIN} <b>${esc(m.city)}</b> · ${esc(m.venue)}</span>
@@ -341,10 +404,13 @@ function cardHTML(m){
     </div>
   </div>`;
 }
-function dayGroupsHTML(list){
+function dayGroupsHTML(list,recentFirst){
   if(!list.length)return `<div class="empty">Nothing here right now.</div>`;
-  const days=[];list.forEach(m=>{let g=days.find(x=>x.k===m.dateLabel);if(!g){g={k:m.dateLabel,items:[]};days.push(g);}g.items.push(m);});
-  return days.map(g=>`<div class="dayhd">${g.k}</div>${g.items.map(cardHTML).join("")}`).join("");
+  const arr=[];
+  list.forEach(m=>{const k=localKey(m.iso);let g=arr.find(x=>x.k===k);if(!g){g={k,iso:m.iso,items:[]};arr.push(g);}g.items.push(m);if(m.iso<g.iso)g.iso=m.iso;});
+  arr.forEach(g=>g.items.sort((a,b)=>a.iso-b.iso));
+  arr.sort((a,b)=>a.iso-b.iso);if(recentFirst)arr.reverse();
+  return arr.map(g=>dayHeadHTML(g.iso)+g.items.map(m=>cardHTML(m)).join("")).join("");
 }
 function standingsHTML(){
   const G={};
@@ -365,47 +431,99 @@ function standingsHTML(){
   }).join("");
 }
 
+function teamsTabHTML(){
+  let html="";
+  const q=state.tSearch.toLowerCase();
+  const nf=nextForFollowed();
+  // following chips
+  if(follow.size){
+    const chips=TEAMS.filter(t=>follow.has(canon(t))).map(t=>`<span class="fchip">${esc(t)}<button data-unfollow="${esc(t)}" title="Unfollow">×</button></span>`).join("");
+    html+=`<div class="pinhd"><span class="s">★</span> Following · ${follow.size}</div><div class="followbar">${chips}<button class="clearall" data-clearfollow="1">Clear all</button></div>`;
+    if(nf.length){html+=`<div class="gtitle">Your next matches</div>`+nf.map(m=>cardHTML(m)).join("");}
+    else{html+=`<div class="note">No upcoming matches for your teams right now — knockout fixtures appear here once the bracket is set.</div>`;}
+  }else{
+    html+=`<div class="note">Star teams below to follow them. Their next (or live) match gets pinned to the top of the <b>Live</b> tab, and you'll see a ★ on their games everywhere.</div>`;
+  }
+  // all teams picker
+  html+=`<div class="filters"><input id="tSearch" placeholder="Search teams" value="${esc(state.tSearch)}" /></div>`;
+  const byGroup={};
+  TEAMS.forEach(t=>{if(q&&!t.toLowerCase().includes(q))return;(byGroup[TEAM_GROUP[t]]=byGroup[TEAM_GROUP[t]]||[]).push(t);});
+  const letters=Object.keys(byGroup).sort();
+  if(!letters.length){html+=`<div class="empty">No teams match "${esc(state.tSearch)}".</div>`;}
+  letters.forEach(L=>{
+    html+=`<div class="gtitle">Group ${L}</div><div class="tgrid">`;
+    html+=byGroup[L].sort((a,b)=>a.localeCompare(b)).map(t=>{
+      const on=follow.has(canon(t));
+      return `<div class="teamrow ${on?"onf":""}" data-follow="${esc(t)}"><svg class="sbtn" viewBox="0 0 24 24" fill="${on?"currentColor":"none"}" stroke="currentColor" stroke-width="2"><path d="M12 2.5l2.9 6.1 6.6.7-4.9 4.5 1.4 6.5L12 17.6 6 20.8l1.4-6.5L2.5 9.3l6.6-.7z"/></svg><span class="nm">${esc(t)}</span></div>`;
+    }).join("");
+    html+=`</div>`;
+  });
+  return html;
+}
 function lists(){
-  const now=Date.now(),todayKey=etKey(now);
+  const now=Date.now();
   const liveOnes=ALL.filter(m=>{const r=resultFor(m,live);return r&&(r.st==="LIVE"||r.st==="HT");});
-  const todayOnes=ALL.filter(m=>etKey(m.iso)===todayKey&&!liveOnes.includes(m));
-  const liveTab=[...liveOnes,...todayOnes];
+  const todayGames=ALL.filter(m=>localKey(m.iso)===localKey(now)).sort((a,b)=>a.iso-b.iso);
   const upcoming=ALL.filter(m=>{const r=resultFor(m,live);return m.iso>now&&!(r&&r.st==="FT");}).slice(0,18);
   const results=ALL.filter(m=>{const r=resultFor(m,live);return r&&r.st==="FT";}).sort((a,b)=>b.iso-a.iso);
   const key=ALL.filter(m=>m.key);
-  return{liveTab,upcoming,results,key,liveCount:liveOnes.length};
+  return{liveOnes,todayGames,upcoming,results,key,liveCount:liveOnes.length};
 }
 
 function render(){
+  computeChanged();
   const L=lists();
-  // status pill
+  // status pill (clickable when live -> jump to live game)
   const status=document.getElementById("status");
-  if(state.loading)status.className="pill",status.innerHTML="Updating…";
-  else if(L.liveCount>0)status.className="pill live",status.innerHTML=`<span class="dot"></span> ${L.liveCount} Live Now`;
-  else status.className="pill",status.textContent=state.updated?("Updated "+new Date(state.updated).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})):"Schedule loaded";
+  if(state.loading){status.className="pill";status.innerHTML="Updating…";status.removeAttribute("data-jump");}
+  else if(L.liveCount>0){status.className="pill live";status.innerHTML=`<span class="dot"></span> ${L.liveCount} Live Now`;status.setAttribute("data-jump","1");}
+  else{status.className="pill";status.textContent=state.updated?("Updated "+new Date(state.updated).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})):"Schedule loaded";status.removeAttribute("data-jump");}
   document.getElementById("refresh-ico").className=state.loading?"spin":"";
 
-  // tabs
-  const TABS=[["live","Live",L.liveTab.length],["upcoming","Upcoming",L.upcoming.length],["results","Results",L.results.length],["key","Key Matches",L.key.length],["standings","Standings",null],["all","All Games",null]];
+  const TABS=[["live","Live",L.liveCount||null],["upcoming","Upcoming",L.upcoming.length],["results","Results",L.results.length],["key","Key Matches",L.key.length],["teams","My Teams",follow.size||null],["standings","Standings",null],["all","All Games",null]];
   document.getElementById("tabs").innerHTML=TABS.map(([id,label,ct])=>`<button class="tab ${state.tab===id?"on":""}" data-tab="${id}">${label}${ct?`<span class="ct">${ct}</span>`:""}</button>`).join("");
 
   const app=document.getElementById("app");
+  const keepY=window.scrollY;
   let html="";
   if(state.apiMsg==="offline")html+=`<div class="note warn">Live auto-update is offline. The full schedule and your saved scores still work — tap any group-stage match to set its result yourself.</div>`;
   else if(state.apiMsg==="online-empty")html+=`<div class="note">No new scores from the live feed yet. Tap any group-stage match to enter a result manually — it saves on this device and updates the standings.</div>`;
 
   if(state.tab==="live"){
-    if(L.liveCount===0)html+=`<div class="note">No matches are live this moment. Showing today's fixtures (ET). Tap a match to set its score, or check Upcoming.</div>`;
-    html+=dayGroupsHTML(L.liveTab);
+    const now=Date.now();
+    // "Your teams" pin — each followed team's next/live match
+    const nf=nextForFollowed();
+    if(nf.length){
+      html+=`<div class="pinhd"><span class="s">★</span> Your teams</div>`;
+      html+=nf.map(m=>cardHTML(m)).join("");
+    }
+    if(L.todayGames.length){
+      if(L.liveCount>0)html+=`<div class="jump" data-jump="1"><span class="dot"></span> ${L.liveCount} live now — tap to jump</div>`;
+      const anchor=L.liveOnes[0]||L.todayGames.find(m=>{const r=resultFor(m,live);return !(r&&r.st==="FT");})||L.todayGames[0];
+      html+=dayHeadHTML(L.todayGames[0].iso);
+      html+=L.todayGames.map(m=>cardHTML(m,m===anchor)).join("");
+    }else if(!nf.length){
+      const next=ALL.filter(m=>m.iso>now).sort((a,b)=>a.iso-b.iso)[0];
+      html+=`<div class="note">No matches today. Here's what's next.</div>`;
+      if(next){
+        const cd=relLabel(next.iso)||fmtFull.format(next.iso);
+        html+=`<div class="hero"><div class="lab">Up Next</div><div class="ht">${esc(next.home)} <span style="color:#8a8ea3">v</span> ${esc(next.away)}</div><div class="hmeta"><span class="cd">${fmtTime(next.iso)} · ${cd}</span><span>${esc(next.city)} · ${next.knock?next.tag:("Grp "+next.group)}</span></div></div>`;
+        const nd=localKey(next.iso),slate=ALL.filter(m=>localKey(m.iso)===nd).sort((a,b)=>a.iso-b.iso);
+        html+=dayHeadHTML(slate[0].iso)+slate.map(m=>cardHTML(m,m===next)).join("");
+      }
+    }
   }else if(state.tab==="upcoming"){
     html+=dayGroupsHTML(L.upcoming);
   }else if(state.tab==="results"){
-    html+=L.results.length?dayGroupsHTML(L.results):`<div class="empty">No completed matches yet.</div>`;
+    html+=L.results.length?dayGroupsHTML(L.results,true):`<div class="empty">No completed matches yet.</div>`;
+  }else if(state.tab==="teams"){
+    html+=teamsTabHTML();
   }else if(state.tab==="key"){
     html+=`<div class="note">Marquee fixtures: every host-nation game (Canada, USA, Mexico) or heavyweight (Brazil, Argentina, France, Spain, Germany, England, Portugal, Netherlands), plus the knockout run from the Round of 16.</div>`;
     const byStage=[];L.key.forEach(m=>{let g=byStage.find(x=>x.s===m.stage);if(!g){g={s:m.stage,items:[]};byStage.push(g);}g.items.push(m);});
     byStage.sort((a,b)=>STAGE_ORDER.indexOf(a.s)-STAGE_ORDER.indexOf(b.s));
-    html+=byStage.map(g=>`<div class="sechd">${g.s}</div>${g.items.map(cardHTML).join("")}`).join("");
+    byStage.forEach(g=>g.items.sort((a,b)=>a.iso-b.iso));
+    html+=byStage.map(g=>`<div class="sechd">${g.s}</div>${g.items.map(m=>cardHTML(m)).join("")}`).join("");
   }else if(state.tab==="standings"){
     html+=`<div class="legend"><span class="k"><span class="d" style="background:var(--mex)"></span> Top 2 advance</span><span class="k"><span class="d" style="background:var(--gold)"></span> 3rd (best 8 advance)</span></div>`;
     html+=standingsHTML();
@@ -426,8 +544,18 @@ function render(){
     });
     html+=dayGroupsHTML(filtered);
   }
-  html+=`<div class="foot">Live scores auto-pull from a free feed when online; tap any group-stage match to set scores yourself (saved on-device).<br/>All 104 matches · kickoff times in Eastern Time · knockout teams (2A, W73…) resolve as groups finish.</div>`;
+  html+=`<div class="foot">Times shown in your local time (${TZ_ABBR}) · live scores auto-pull from a free feed when online; tap any group-stage match to set scores yourself.<br/>All 104 matches · knockout teams (2A, W73…) resolve as groups finish.</div>`;
   app.innerHTML=html;
+  updateSnapshot();
+
+  if(state._keepScroll){state._keepScroll=false;window.scrollTo(0,keepY);
+    const ts=document.getElementById("tSearch");if(ts&&state._focusT){ts.focus();ts.setSelectionRange(ts.value.length,ts.value.length);state._focusT=false;}
+  }
+  if(state._scrollLive&&state.tab==="live"){
+    state._scrollLive=false;
+    const el=document.getElementById("live-anchor");
+    if(el)requestAnimationFrame(()=>el.scrollIntoView({behavior:"smooth",block:"center"}));
+  }
 }
 
 /* ---------- modal (manual score editor) ---------- */
@@ -457,12 +585,20 @@ function closeEditor(){document.getElementById("overlay").classList.remove("show
 
 /* ---------- events ---------- */
 document.addEventListener("click",e=>{
+  const jump=e.target.closest("[data-jump]");
+  if(jump){state.tab="live";state._scrollLive=true;render();return;}
   const tabBtn=e.target.closest(".tab");
-  if(tabBtn){state.tab=tabBtn.dataset.tab;render();return;}
+  if(tabBtn){state.tab=tabBtn.dataset.tab;if(tabBtn.dataset.tab==="live")state._scrollLive=true;render();return;}
   const toggle=e.target.closest("[data-toggle]");
-  if(toggle){state[toggle.dataset.toggle]=!state[toggle.dataset.toggle];render();return;}
+  if(toggle){state[toggle.dataset.toggle]=!state[toggle.dataset.toggle];state._keepScroll=true;render();return;}
   const refresh=e.target.closest("#refresh");
   if(refresh){fetchLive();return;}
+  const unfollow=e.target.closest("[data-unfollow]");
+  if(unfollow){toggleFollow(unfollow.dataset.unfollow);state._keepScroll=true;render();return;}
+  const clearf=e.target.closest("[data-clearfollow]");
+  if(clearf){follow.clear();saveFollow();state._keepScroll=true;render();return;}
+  const followEl=e.target.closest("[data-follow]");
+  if(followEl){toggleFollow(followEl.dataset.follow);state._keepScroll=true;render();return;}
   // modal buttons
   const step=e.target.closest("[data-step]");
   if(step){const s=step.dataset.step;if(s==="h+")state.editH++;if(s==="h-")state.editH=Math.max(0,state.editH-1);if(s==="a+")state.editA++;if(s==="a-")state.editA=Math.max(0,state.editA-1);renderSheet();return;}
@@ -478,13 +614,16 @@ document.addEventListener("click",e=>{
   if(card){openEditor(+card.dataset.idx);return;}
 });
 document.addEventListener("input",e=>{
-  if(e.target.id==="fSearch"){state.fSearch=e.target.value;const filtered=document.querySelector(".filters");/* keep focus: re-render then refocus */const pos=e.target.selectionStart;render();const inp=document.getElementById("fSearch");if(inp){inp.focus();inp.setSelectionRange(pos,pos);}}
+  if(e.target.id==="fSearch"){state.fSearch=e.target.value;const pos=e.target.selectionStart;render();const inp=document.getElementById("fSearch");if(inp){inp.focus();inp.setSelectionRange(pos,pos);}}
+  else if(e.target.id==="tSearch"){state.tSearch=e.target.value;state._keepScroll=true;state._focusT=true;render();}
 });
 document.addEventListener("change",e=>{
   if(e.target.id==="fGroup"){state.fGroup=e.target.value;render();}
 });
 
 /* ---------- boot ---------- */
+document.getElementById("subtz").textContent=`Canada · Mexico · USA — all times ${TZ_ABBR}`;
+state._scrollLive=true;
 render();
 fetchLive();
 setInterval(()=>{if(!document.hidden&&navigator.onLine)fetchLive();},75000);
