@@ -82,6 +82,35 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;color:var(--ink);bac
 .teamrow .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .tag.foll{color:var(--gold);border-color:var(--gold);}
 @media(max-width:560px){.tgrid{grid-template-columns:1fr;}}
+/* bracket org chart */
+.bkwrap{overflow:auto;-webkit-overflow-scrolling:touch;padding:6px 2px 16px;border:1px solid var(--hair);border-radius:8px;background:#fcfbf8;}
+.bracket{display:flex;width:max-content;padding:6px;}
+.bk-node{display:flex;align-items:center;}
+.bk-children{display:flex;flex-direction:column;justify-content:center;}
+.bk-child{display:flex;}
+.bk-conn{width:14px;flex:0 0 auto;border-top:2px solid #d9d5c8;}
+.bk-match{flex:0 0 auto;width:150px;background:#fff;border:1px solid var(--hair);border-radius:6px;padding:6px 8px;margin:6px 0;cursor:pointer;}
+.bk-match.bklive{border-color:#f3b3ad;box-shadow:0 0 0 1px #f3b3ad inset;}
+.bk-match.bkfinal{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset;}
+.bk-tag{font-family:'IBM Plex Mono';font-size:8px;color:var(--soft);letter-spacing:.06em;margin-bottom:3px;text-transform:uppercase;}
+.bk-team{display:flex;justify-content:space-between;gap:6px;padding:2px 0;font-size:11px;color:var(--ink);}
+.bk-team.bw{font-weight:700;}
+.bk-team.tbd .nm{color:var(--soft);font-style:italic;}
+.bk-team .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.bk-sc{font-family:'IBM Plex Mono';font-weight:600;color:var(--soft);flex:0 0 auto;}
+.bk-live{color:var(--livec);font-size:8px;font-weight:700;margin-top:2px;letter-spacing:.05em;}
+.bk3{margin-top:16px;background:#fff;border:1px solid var(--hair);border-radius:8px;padding:12px;}
+.bk3 .bk3lab{font-family:'Anton';font-size:14px;text-transform:uppercase;margin-bottom:8px;color:var(--ink);}
+.bk3 .bk-match{width:auto;margin:0;}
+.bkscale{font-size:10.5px;color:var(--soft);margin:8px 2px 0;}
+/* knockout editor */
+.koin{display:flex;flex-direction:column;gap:9px;margin-bottom:8px;}
+.koin input{font-family:'Inter';font-size:14px;padding:11px 12px;border:1px solid var(--hair);border-radius:8px;background:#fff;}
+.koin .vsx{font-family:'Anton';color:var(--soft);font-size:13px;text-align:center;}
+.advsel{display:flex;gap:8px;margin:4px 0 16px;}
+.advsel button{flex:1;border:1px solid var(--hair);background:#fff;border-radius:8px;padding:11px 8px;font-size:12px;font-weight:600;cursor:pointer;color:var(--soft);font-family:'Inter';}
+.advsel button.on{background:var(--mex);color:#fff;border-color:var(--mex);}
+.advlbl{font-size:11px;color:var(--soft);margin-bottom:7px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;}
 .sechd{font-family:'Anton';font-size:18px;text-transform:uppercase;color:var(--ink);margin:22px 0 6px;}
 .card{position:relative;background:var(--panel);border:1px solid var(--hair);border-radius:6px;padding:11px 14px 11px 18px;margin-bottom:8px;overflow:hidden;}
 .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--usa);}
@@ -260,6 +289,9 @@ ALL.forEach((m,i)=>m.idx=i);
 const TEAM_GROUP={};const TEAMS=[];
 ALL.forEach(m=>{if(m.knock)return;[m.home,m.away].forEach(t=>{if(!(t in TEAM_GROUP)){TEAM_GROUP[t]=m.group;TEAMS.push(t);}});});
 TEAMS.sort((a,b)=>a.localeCompare(b));
+/* knockout bracket: code (M73..M104) -> {match, token home, token away} */
+const KO_BY_CODE={};
+ALL.forEach(m=>{if(m.knock)KO_BY_CODE[m.tag]={m,h:m.home,a:m.away};});
 
 const ALIAS={"turkey":"turkiye","turkiye":"turkiye","cape verde":"cabo verde","cabo verde":"cabo verde","dr congo":"dr congo","congo dr":"dr congo","democratic republic of congo":"dr congo","congo":"dr congo","ivory coast":"ivory coast","cote divoire":"ivory coast","cote d'ivoire":"ivory coast","south korea":"south korea","korea republic":"south korea","korea":"south korea","usa":"usa","united states":"usa","united states of america":"usa","us":"usa","bosnia and herzegovina":"bosnia","bosnia & herzegovina":"bosnia","bosnia":"bosnia","czechia":"czechia","czech republic":"czechia"};
 function canon(s){let x=(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/&/g,"and").replace(/[.\u2019']/g,"").replace(/\s+/g," ").trim();return ALIAS[x]||x;}
@@ -274,6 +306,26 @@ const SEED=[
  {h:"Brazil",a:"Morocco",hs:1,as:1,st:"FT"},
  {h:"Haiti",a:"Scotland",hs:0,as:1,st:"FT"}
 ];
+/* Real Round-of-32 matchups (fixed once groups finished), keyed by match code.
+   Home/away match the app's bracket token order. Completed games include score + winner. */
+const KO_SEED={
+ M73:{h:"South Africa",a:"Canada",hs:0,as:1,win:"a"},
+ M74:{h:"Germany",a:"Paraguay",hs:1,as:1,win:"a"},   // Paraguay 4-3 pens
+ M75:{h:"Netherlands",a:"Morocco",hs:1,as:1,win:"a"},// Morocco 3-2 pens
+ M76:{h:"Brazil",a:"Japan",hs:2,as:1,win:"h"},
+ M77:{h:"France",a:"Sweden"},
+ M78:{h:"Ivory Coast",a:"Norway"},
+ M79:{h:"Mexico",a:"Ecuador"},
+ M80:{h:"England",a:"DR Congo"},
+ M81:{h:"USA",a:"Bosnia & Herzegovina"},
+ M82:{h:"Belgium",a:"Senegal"},
+ M83:{h:"Portugal",a:"Croatia"},
+ M84:{h:"Spain",a:"Austria"},
+ M85:{h:"Switzerland",a:"Algeria"},
+ M86:{h:"Argentina",a:"Cabo Verde"},
+ M87:{h:"Colombia",a:"Ghana"},
+ M88:{h:"Australia",a:"Egypt"}
+};
 function mergeResults(prev,arr,opts={}){
   const next={...prev};
   (arr||[]).forEach(r=>{
@@ -299,9 +351,11 @@ function dayHeadHTML(iso){const k=localKey(iso),tk=localKey(Date.now()),tmr=loca
 function relLabel(iso){const now=Date.now(),diff=iso-now;if(diff<=0)return"";const tk=localKey(now),tmr=localKey(now+864e5),k=localKey(iso);if(k===tk){const h=diff/3.6e6;return h<1?`in ${Math.max(1,Math.round(diff/6e4))} min`:`in ${Math.round(h)}h`;}if(k===tmr)return"Tomorrow";return"";}
 
 /* ---------- state ---------- */
-const LS_LIVE="wc26_live_v1",LS_UPD="wc26_upd_v1",LS_FOLLOW="wc26_follow_v1";
+const LS_LIVE="wc26_live_v1",LS_UPD="wc26_upd_v1",LS_FOLLOW="wc26_follow_v1",LS_KO="wc26_ko_v1",LS_KOWIN="wc26_kowin_v1";
 let live=loadLive();
 let follow=loadFollow();
+let koOverride=loadKO();
+let koWin=loadKOWin();
 let state={tab:"live",updated:loadUpd(),loading:false,apiMsg:null,fGroup:"all",fSearch:"",fCan:false,fKey:false,tSearch:"",editIdx:null,editH:0,editA:0};
 function loadLive(){try{const s=localStorage.getItem(LS_LIVE);if(s)return JSON.parse(s);}catch(e){}return mergeResults({},SEED);}
 function saveLive(){try{localStorage.setItem(LS_LIVE,JSON.stringify(live));}catch(e){}}
@@ -309,15 +363,74 @@ function loadUpd(){try{return +localStorage.getItem(LS_UPD)||null;}catch(e){retu
 function saveUpd(t){try{localStorage.setItem(LS_UPD,String(t));}catch(e){}}
 function loadFollow(){try{const s=localStorage.getItem(LS_FOLLOW);if(s)return new Set(JSON.parse(s));}catch(e){}return new Set();}
 function saveFollow(){try{localStorage.setItem(LS_FOLLOW,JSON.stringify([...follow]));}catch(e){}}
+function loadKO(){try{const s=localStorage.getItem(LS_KO);if(s)return JSON.parse(s);}catch(e){}return {};}
+function saveKO(){try{localStorage.setItem(LS_KO,JSON.stringify(koOverride));}catch(e){}}
+function loadKOWin(){try{const s=localStorage.getItem(LS_KOWIN);if(s)return JSON.parse(s);}catch(e){}return {};}
+function saveKOWin(){try{localStorage.setItem(LS_KOWIN,JSON.stringify(koWin));}catch(e){}}
+/* Seed known knockout matchups/results without clobbering the user's own edits or live feed data. */
+function seedKnockout(){
+  let ch=false;
+  for(const code in KO_SEED){
+    const s=KO_SEED[code];
+    if(!koOverride[code]){koOverride[code]={h:s.h,a:s.a};ch=true;}
+    if(s.win&&!koWin[code]){koWin[code]=s.win;ch=true;}
+    if(s.hs!=null){const pk=pairKey(s.h,s.a);if(!live[pk]){live=mergeResults(live,[{h:s.h,a:s.a,hs:s.hs,as:s.as,st:"FT"}]);}}
+  }
+  if(ch){saveKO();saveKOWin();}
+  saveLive();
+}
 function isFollowed(team){return follow.has(canon(team));}
 function toggleFollow(team){const c=canon(team);if(follow.has(c))follow.delete(c);else follow.add(c);saveFollow();}
-function matchFollowed(m){return !m.knock&&(isFollowed(m.home)||isFollowed(m.away));}
-function isLiveM(m){const r=resultFor(m,live);return r&&(r.st==="LIVE"||r.st==="HT");}
+function isLiveM(m){const d=dispMatch(m);const r=resultFor(d,live);return r&&(r.st==="LIVE"||r.st==="HT");}
+function matchFollowed(m){const d=dispMatch(m);return isFollowed(d.home)||isFollowed(d.away);}
+
+/* ---------- knockout resolution (live as standings settle / winners advance) ---------- */
+function standingsRows(L){
+  const T={};
+  ALL.forEach(m=>{if(m.knock||m.group!==L)return;
+    [m.home,m.away].forEach(t=>{if(!T[t])T[t]={team:t,p:0,gf:0,ga:0,pts:0};});
+    const r=resultFor(m,live);
+    if(r&&r.st==="FT"){const H=T[m.home],A=T[m.away];H.p++;A.p++;H.gf+=r.hs;H.ga+=r.as;A.gf+=r.as;A.ga+=r.hs;if(r.hs>r.as)H.pts+=3;else if(r.hs<r.as)A.pts+=3;else{H.pts++;A.pts++;}}
+  });
+  return Object.values(T).sort((a,b)=>b.pts-a.pts||(b.gf-b.ga)-(a.gf-a.ga)||b.gf-a.gf||a.team.localeCompare(b.team));
+}
+function groupComplete(L){return ALL.filter(m=>!m.knock&&m.group===L).every(m=>{const r=resultFor(m,live);return r&&r.st==="FT";});}
+/* best 8 third-placed teams across the 12 groups (qualification only; slot assignment is by feed/manual) */
+function bestThirds(){
+  const allGroupsDone="ABCDEFGHIJKL".split("").every(groupComplete);
+  if(!allGroupsDone)return null;
+  const thirds="ABCDEFGHIJKL".split("").map(L=>{const r=standingsRows(L)[2];return r?{...r,group:L}:null;}).filter(Boolean);
+  thirds.sort((a,b)=>b.pts-a.pts||(b.gf-b.ga)-(a.gf-a.ga)||b.gf-a.gf||a.team.localeCompare(b.team));
+  return thirds.slice(0,8);
+}
+function resolveCode(tok){
+  let x;
+  if(x=/^([12])([A-L])$/.exec(tok)){if(!groupComplete(x[2]))return null;const r=standingsRows(x[2])[+x[1]-1];return r?r.team:null;}
+  if(/^3rd/.test(tok))return null; // assigned via feed or manual
+  if(x=/^W(\d+)$/.exec(tok))return koWinnerTeam("M"+x[1]);
+  if(x=/^L(\d+)$/.exec(tok))return koLoserTeam("M"+x[1]);
+  return null;
+}
+function koResolved(code){
+  const o=koOverride[code];if(o&&o.h&&o.a)return{h:o.h,a:o.a};
+  const e=KO_BY_CODE[code];if(!e)return{h:null,a:null};
+  return{h:(o&&o.h)||resolveCode(e.h),a:(o&&o.a)||resolveCode(e.a)};
+}
+function koSide(code){
+  const res=koResolved(code);
+  if(!res.h||!res.a)return{res,r:null,win:null};
+  const r=resultFor({home:res.h,away:res.a},live);
+  let win=koWin[code]||((r&&r.st==="FT"&&r.hs!==r.as)?(r.hs>r.as?"h":"a"):null);
+  return{res,r,win};
+}
+function koWinnerTeam(code){const s=koSide(code);return s.win?(s.win==="h"?s.res.h:s.res.a):null;}
+function koLoserTeam(code){const s=koSide(code);return s.win?(s.win==="h"?s.res.a:s.res.h):null;}
+function dispMatch(m){if(!m.knock)return{home:m.home,away:m.away};const r=koResolved(m.tag);return{home:r.h||m.home,away:r.a||m.away};}
 function nextForFollowed(){
   const now=Date.now(),picks=new Map();
   [...follow].forEach(ct=>{
-    const cand=ALL.filter(m=>!m.knock&&(canon(m.home)===ct||canon(m.away)===ct))
-      .map(m=>({m,r:resultFor(m,live)}))
+    const cand=ALL.filter(m=>{const d=dispMatch(m);return canon(d.home)===ct||canon(d.away)===ct;})
+      .map(m=>({m,r:resultFor(dispMatch(m),live)}))
       .filter(x=>(x.r&&(x.r.st==="LIVE"||x.r.st==="HT"))||(x.m.iso>now&&!(x.r&&x.r.st==="FT")))
       .sort((a,b)=>a.m.iso-b.m.iso);
     if(cand.length)picks.set(cand[0].m.idx,cand[0].m);
@@ -346,7 +459,7 @@ async function fetchLive(){
   try{
     const now=Date.now();
     const isoDay=ms=>new Date(ms).toISOString().slice(0,10);
-    const days=[isoDay(now+864e5),isoDay(now),isoDay(now-864e5),isoDay(now-2*864e5)];
+    const days=[isoDay(now+2*864e5),isoDay(now+864e5),isoDay(now),isoDay(now-864e5),isoDay(now-2*864e5)];
     let evs=[];
     for(const d of days){try{evs=evs.concat(await fetchDay(d));}catch(e){}}
     const wc=evs.filter(e=>e&&/world cup/i.test(e.strLeague||"")&&e.strHomeTeam&&e.strAwayTeam);
@@ -355,9 +468,13 @@ async function fetchLive(){
       const st=mapStatus(e);
       if(st==="NS")return;
       if(e.intHomeScore==null||e.intAwayScore==null||e.intHomeScore==="")return;
-      arr.push({h:e.strHomeTeam,a:e.strAwayTeam,hs:e.intHomeScore,as:e.intAwayScore,st,min:e.strProgress||""});
+      arr.push({h:e.strHomeTeam,a:e.strAwayTeam,hs:e.intHomeScore,as:e.intAwayScore,st,min:e.strProgress||"",d:e.dateEvent,venue:e.strVenue||"",city:e.strCity||""});
     });
-    if(arr.length){live=mergeResults(live,arr);saveLive();}
+    if(arr.length){
+      live=mergeResults(live,arr);saveLive();
+      // best-effort: resolve knockout matchups from the feed by date + venue
+      resolveKOFromFeed(arr);
+    }
     state.updated=Date.now();saveUpd(state.updated);
     state.apiMsg=arr.length?null:(state.updated?"online-empty":null);
   }catch(e){
@@ -365,6 +482,32 @@ async function fetchLive(){
   }finally{
     state.loading=false; render();
   }
+}
+function normVenue(s){return (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/stadium|estadio|field|arena|park/g,"").replace(/[^a-z]/g,"");}
+function resolveKOFromFeed(arr){
+  let changed=false;
+  arr.forEach(e=>{
+    // only consider matches that aren't already a known group/resolved pair
+    const koMatches=ALL.filter(m=>m.knock);
+    const cand=koMatches.filter(m=>{
+      if(koOverride[m.tag])return false; // don't clobber manual/existing
+      const dayMatch=Math.abs(localKey(m.iso)-(+String(e.d||"").replace(/-/g,"")))<=1 || fmtMD.format(m.iso)===fmtMD.format(new Date((e.d||"")+"T12:00:00Z"));
+      if(!dayMatch)return false;
+      const v=normVenue(e.venue),mv=normVenue(m.venue),c=(e.city||"").toLowerCase();
+      return (v&&mv&&(v.includes(mv)||mv.includes(v)))||(c&&m.city.toLowerCase().includes(c));
+    });
+    if(cand.length===1){
+      const m=cand[0];
+      // only fill if this slot isn't already resolved to these same teams
+      const cur=koResolved(m.tag);
+      if(!(cur.h&&cur.a)){
+        koOverride[m.tag]={h:e.h,a:e.a};
+        if(e.st==="FT"&&e.hs!==e.as)koWin[m.tag]=e.hs>e.as?"h":"a";
+        changed=true;
+      }
+    }
+  });
+  if(changed){saveKO();saveKOWin();}
 }
 
 /* ---------- rendering ---------- */
@@ -375,13 +518,16 @@ function updateSnapshot(){snapshot={};for(const pk in live)snapshot[pk]=liveSig(
 const PIN='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 21s-7-6.2-7-11a7 7 0 1 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>';
 function esc(s){return(s+"").replace(/&/g,"&amp;").replace(/</g,"&lt;");}
 function cardHTML(m,anchor){
-  const r=resultFor(m,live);
+  const dm=dispMatch(m);
+  const r=resultFor(dm,live);
   const isLive=r&&(r.st==="LIVE"||r.st==="HT");
   const done=r&&r.st==="FT";
-  const pk=pairKey(m.home,m.away);
+  const pk=pairKey(dm.home,dm.away);
   const flash=changedSet.has(pk)?" flash":"";
-  const cls=`card ${m.knock?"ko":m.host}${isLive?" islive":""}${m.editable?" editable":""}${flash}`;
-  const hw=done&&r.hs>r.as,aw=done&&r.as>r.hs;
+  const cls=`card ${m.knock?"ko":m.host}${isLive?" islive":""} editable${flash}`;
+  let hw,aw;
+  if(m.knock&&done){const s=koSide(m.tag);hw=s.win==="h";aw=s.win==="a";}
+  else{hw=done&&r.hs>r.as;aw=done&&r.as>r.hs;}
   const scoreOrVs=r?`<span class="sc ${isLive?"livesc":""}">${r.hs}–${r.as}</span>`:`<span class="vs">v</span>`;
   let badge;
   if(isLive)badge=`<span class="lv"><span class="dot"></span> ${r.st==="HT"?"HALF-TIME":("LIVE"+(r.min?" "+r.min:""))}</span><span class="upr" style="color:var(--soft)">KO ${fmtTime(m.iso)}</span>`;
@@ -391,7 +537,7 @@ function cardHTML(m,anchor){
     <div class="crow">
       <div class="ctime">${fmtTime(m.iso)}<small>${shortDate(m.iso)}</small></div>
       <div class="fix">
-        <div class="teams"><span class="t ${hw?"win":""}">${esc(m.home)}</span>${scoreOrVs}<span class="t ${aw?"win":""}">${esc(m.away)}</span></div>
+        <div class="teams"><span class="t ${hw?"win":""}">${esc(dm.home)}</span>${scoreOrVs}<span class="t ${aw?"win":""}">${esc(dm.away)}</span></div>
         <div class="meta">
           <span class="tag">${m.knock?m.tag:("Grp "+m.group)}</span>
           ${matchFollowed(m)?'<span class="tag foll">★</span>':""}
@@ -413,22 +559,49 @@ function dayGroupsHTML(list,recentFirst){
   return arr.map(g=>dayHeadHTML(g.iso)+g.items.map(m=>cardHTML(m)).join("")).join("");
 }
 function standingsHTML(){
-  const G={};
-  ALL.forEach(m=>{
-    if(m.knock||!m.group)return;
-    (G[m.group]=G[m.group]||{});
-    [m.home,m.away].forEach(t=>{if(!G[m.group][t])G[m.group][t]={team:t,p:0,gf:0,ga:0,pts:0};});
-    const r=resultFor(m,live);
-    if(r&&r.st==="FT"){const H=G[m.group][m.home],A=G[m.group][m.away];H.p++;A.p++;H.gf+=r.hs;H.ga+=r.as;A.gf+=r.as;A.ga+=r.hs;if(r.hs>r.as){H.pts+=3;}else if(r.hs<r.as){A.pts+=3;}else{H.pts++;A.pts++;}}
-  });
-  return Object.keys(G).sort().map(L=>{
-    const rows=Object.values(G[L]).sort((a,b)=>b.pts-a.pts||(b.gf-b.ga)-(a.gf-a.ga)||b.gf-a.gf||a.team.localeCompare(b.team));
+  return "ABCDEFGHIJKL".split("").map(L=>{
+    const rows=standingsRows(L);
     const played=rows.some(r=>r.p>0);
     return `<div class="stable"><h4>Group ${L}</h4>
       <div class="st-row hdr"><span></span><span>Team</span><span class="st-hd">P</span><span class="st-hd">GD</span><span class="st-hd">GF</span><span class="st-hd">Pts</span></div>
       ${played?rows.map((r,i)=>`<div class="st-row ${i<2?"adv":i===2?"third":""}"><span class="pos">${i+1}</span><span class="nm">${esc(r.team)}</span><span class="num">${r.p}</span><span class="num">${r.gf-r.ga>0?"+":""}${r.gf-r.ga}</span><span class="num">${r.gf}</span><span class="pts">${r.pts}</span></div>`).join(""):`<div class="emptyg">No matches completed yet.</div>`}
     </div>`;
   }).join("");
+}
+
+/* ---------- live bracket org chart ---------- */
+const ROUND_TAG={"Round of 32":"R32","Round of 16":"R16","Quarterfinals":"QF","Semifinals":"SF","Final":"Final"};
+function feeders(code){const e=KO_BY_CODE[code];const f=[];[e.h,e.a].forEach(t=>{const m=/^W(\d+)$/.exec(t);f.push(m?"M"+m[1]:null);});return f;}
+function bkTeamRow(name,tokenLabel,isWin,isLive){
+  const tbd=!name;
+  return `<div class="bk-team ${isWin?"bw":""} ${tbd?"tbd":""}"><span class="nm">${esc(name||tokenLabel)}</span><span class="bk-sc">${isLive&&!name?"":""}</span></div>`;
+}
+function miniNode(code){
+  const e=KO_BY_CODE[code];const{res,r,win}=koSide(code);
+  const isLive=r&&(r.st==="LIVE"||r.st==="HT");
+  const hName=res.h,aName=res.a,hsc=r?r.hs:"",asc=r?r.as:"";
+  const fin=code==="M104";
+  return `<div class="bk-match${isLive?" bklive":""}${fin?" bkfinal":""}" data-idx="${e.m.idx}">
+    <div class="bk-tag">${ROUND_TAG[e.m.stage]} · ${fmtMD.format(e.m.iso)}</div>
+    <div class="bk-team ${win==="h"?"bw":""} ${hName?"":"tbd"}"><span class="nm">${esc(hName||e.h)}</span><span class="bk-sc">${hsc}</span></div>
+    <div class="bk-team ${win==="a"?"bw":""} ${aName?"":"tbd"}"><span class="nm">${esc(aName||e.a)}</span><span class="bk-sc">${asc}</span></div>
+    ${isLive?'<div class="bk-live">● LIVE</div>':""}
+  </div>`;
+}
+function bkNode(code){
+  const[ft,fb]=feeders(code);
+  const kids=(ft||fb)?`<div class="bk-children"><div class="bk-child">${bkNode(ft)}</div><div class="bk-child">${bkNode(fb)}</div></div><div class="bk-conn"></div>`:"";
+  return `<div class="bk-node">${kids}${miniNode(code)}</div>`;
+}
+function bracketHTML(){
+  const allDone="ABCDEFGHIJKL".split("").every(groupComplete);
+  let html=`<div class="note">The full road to the Final — updates live as group tables settle and knockout winners advance. Tap any match to set its teams or result. Scroll sideways to follow the bracket toward the Final →</div>`;
+  html+=`<div class="bkwrap"><div class="bracket">${bkNode("M104")}</div></div>`;
+  html+=`<div class="bk3"><div class="bk3lab">Third-Place Match · ${fmtMD.format(KO_BY_CODE["M103"].m.iso)}</div>${miniNode("M103")}</div>`;
+  if(!allDone){
+    html+=`<div class="bkscale">Group winners and runners-up fill the Round of 32 automatically once each group finishes. Third-place qualifiers and any matchup can be set by tapping a match. Winners then advance through the bracket on their own.</div>`;
+  }
+  return html;
 }
 
 function teamsTabHTML(){
@@ -462,10 +635,10 @@ function teamsTabHTML(){
 }
 function lists(){
   const now=Date.now();
-  const liveOnes=ALL.filter(m=>{const r=resultFor(m,live);return r&&(r.st==="LIVE"||r.st==="HT");});
+  const liveOnes=ALL.filter(m=>{const r=resultFor(dispMatch(m),live);return r&&(r.st==="LIVE"||r.st==="HT");});
   const todayGames=ALL.filter(m=>localKey(m.iso)===localKey(now)).sort((a,b)=>a.iso-b.iso);
-  const upcoming=ALL.filter(m=>{const r=resultFor(m,live);return m.iso>now&&!(r&&r.st==="FT");}).slice(0,18);
-  const results=ALL.filter(m=>{const r=resultFor(m,live);return r&&r.st==="FT";}).sort((a,b)=>b.iso-a.iso);
+  const upcoming=ALL.filter(m=>{const r=resultFor(dispMatch(m),live);return m.iso>now&&!(r&&r.st==="FT");}).slice(0,18);
+  const results=ALL.filter(m=>{const r=resultFor(dispMatch(m),live);return r&&r.st==="FT";}).sort((a,b)=>b.iso-a.iso);
   const key=ALL.filter(m=>m.key);
   return{liveOnes,todayGames,upcoming,results,key,liveCount:liveOnes.length};
 }
@@ -480,7 +653,7 @@ function render(){
   else{status.className="pill";status.textContent=state.updated?("Updated "+new Date(state.updated).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})):"Schedule loaded";status.removeAttribute("data-jump");}
   document.getElementById("refresh-ico").className=state.loading?"spin":"";
 
-  const TABS=[["live","Live",L.liveCount||null],["upcoming","Upcoming",L.upcoming.length],["results","Results",L.results.length],["key","Key Matches",L.key.length],["teams","My Teams",follow.size||null],["standings","Standings",null],["all","All Games",null]];
+  const TABS=[["live","Live",L.liveCount||null],["upcoming","Upcoming",L.upcoming.length],["results","Results",L.results.length],["bracket","Bracket",null],["key","Key Matches",L.key.length],["teams","My Teams",follow.size||null],["standings","Standings",null],["all","All Games",null]];
   document.getElementById("tabs").innerHTML=TABS.map(([id,label,ct])=>`<button class="tab ${state.tab===id?"on":""}" data-tab="${id}">${label}${ct?`<span class="ct">${ct}</span>`:""}</button>`).join("");
 
   const app=document.getElementById("app");
@@ -518,6 +691,8 @@ function render(){
     html+=L.results.length?dayGroupsHTML(L.results,true):`<div class="empty">No completed matches yet.</div>`;
   }else if(state.tab==="teams"){
     html+=teamsTabHTML();
+  }else if(state.tab==="bracket"){
+    html+=bracketHTML();
   }else if(state.tab==="key"){
     html+=`<div class="note">Marquee fixtures: every host-nation game (Canada, USA, Mexico) or heavyweight (Brazil, Argentina, France, Spain, Germany, England, Portugal, Netherlands), plus the knockout run from the Round of 16.</div>`;
     const byStage=[];L.key.forEach(m=>{let g=byStage.find(x=>x.s===m.stage);if(!g){g={s:m.stage,items:[]};byStage.push(g);}g.items.push(m);});
@@ -544,7 +719,7 @@ function render(){
     });
     html+=dayGroupsHTML(filtered);
   }
-  html+=`<div class="foot">Times shown in your local time (${TZ_ABBR}) · live scores auto-pull from a free feed when online; tap any group-stage match to set scores yourself.<br/>All 104 matches · knockout teams (2A, W73…) resolve as groups finish.</div>`;
+  html+=`<div class="foot">Times in your local time (${TZ_ABBR}) · live scores auto-pull when online; tap any match to set teams/scores yourself.<br/>Knockout slots fill from group standings and advance through the Bracket automatically as winners are decided.</div>`;
   app.innerHTML=html;
   updateSnapshot();
 
@@ -558,18 +733,50 @@ function render(){
   }
 }
 
-/* ---------- modal (manual score editor) ---------- */
+/* ---------- modal (manual score / knockout editor) ---------- */
 function openEditor(idx){
-  const m=ALL[idx];if(!m.editable)return;
-  const r=resultFor(m,live);
-  state.editIdx=idx;state.editH=r?r.hs:0;state.editA=r?r.as:0;
+  const m=ALL[idx];
+  state.editIdx=idx;
+  if(m.knock){
+    const dm=dispMatch(m);const s=koSide(m.tag);
+    state.editKOH=dm.home&&!/^[0-9WLM]|^3rd/.test(dm.home)?dm.home:(koOverride[m.tag]?koOverride[m.tag].h:"")||"";
+    state.editKOA=dm.away&&!/^[0-9WLM]|^3rd/.test(dm.away)?dm.away:(koOverride[m.tag]?koOverride[m.tag].a:"")||"";
+    const r=s.r;state.editH=r?r.hs:0;state.editA=r?r.as:0;state.editAdv=s.win||"";
+  }else{
+    const r=resultFor(m,live);state.editH=r?r.hs:0;state.editA=r?r.as:0;
+  }
   renderSheet();document.getElementById("overlay").classList.add("show");
 }
 function renderSheet(){
   const m=ALL[state.editIdx];
+  if(m.knock){
+    document.getElementById("sheet").innerHTML=`
+      <h3>${ROUND_TAG[m.stage]} · ${m.tag.replace("M","Match ")}</h3>
+      <div class="sub">${esc(m.dateLabel)} · ${esc(m.city)} · auto-fills from standings; edit to override</div>
+      <div class="koin">
+        <input id="ko-h" placeholder="Home team" value="${esc(state.editKOH)}" />
+        <div class="scorer" style="margin:0">
+          <div class="side"><div class="stepper"><button data-step="h-">–</button><span class="val">${state.editH}</span><button data-step="h+">+</button></div></div>
+          <div class="vsx">–</div>
+          <div class="side"><div class="stepper"><button data-step="a-">–</button><span class="val">${state.editA}</span><button data-step="a+">+</button></div></div>
+        </div>
+        <input id="ko-a" placeholder="Away team" value="${esc(state.editKOA)}" />
+      </div>
+      <div class="advlbl">Who advances?</div>
+      <div class="advsel">
+        <button data-adv="h" class="${state.editAdv==="h"?"on":""}">${esc(state.editKOH||"Home")}</button>
+        <button data-adv="a" class="${state.editAdv==="a"?"on":""}">${esc(state.editKOA||"Away")}</button>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn-cancel" data-act="cancel">Cancel</button>
+        <button class="btn-clear" data-act="koclear">Reset</button>
+        <button class="btn-save" data-act="kosave">Save</button>
+      </div>`;
+    return;
+  }
   document.getElementById("sheet").innerHTML=`
     <h3>Set Result</h3>
-    <div class="sub">Grp ${m.group} · ${m.dateLabel} · ${m.city}</div>
+    <div class="sub">Grp ${m.group} · ${esc(m.dateLabel)} · ${esc(m.city)}</div>
     <div class="scorer">
       <div class="side"><div class="nm">${esc(m.home)}</div><div class="stepper"><button data-step="h-">–</button><span class="val">${state.editH}</span><button data-step="h+">+</button></div></div>
       <div class="x">–</div>
@@ -602,26 +809,47 @@ document.addEventListener("click",e=>{
   // modal buttons
   const step=e.target.closest("[data-step]");
   if(step){const s=step.dataset.step;if(s==="h+")state.editH++;if(s==="h-")state.editH=Math.max(0,state.editH-1);if(s==="a+")state.editA++;if(s==="a-")state.editA=Math.max(0,state.editA-1);renderSheet();return;}
+  const adv=e.target.closest("[data-adv]");
+  if(adv){state.editAdv=adv.dataset.adv;renderSheet();return;}
   const act=e.target.closest("[data-act]");
   if(act){
-    const m=ALL[state.editIdx];
-    if(act.dataset.act==="save"){live=mergeResults(live,[{h:m.home,a:m.away,hs:state.editH,as:state.editA,st:"FT"}],{manual:true,force:true});saveLive();}
-    else if(act.dataset.act==="clear"){delete live[pairKey(m.home,m.away)];saveLive();}
+    const m=ALL[state.editIdx];const A=act.dataset.act;
+    if(A==="save"){live=mergeResults(live,[{h:m.home,a:m.away,hs:state.editH,as:state.editA,st:"FT"}],{manual:true,force:true});saveLive();}
+    else if(A==="clear"){delete live[pairKey(m.home,m.away)];saveLive();}
+    else if(A==="kosave"){
+      const h=(state.editKOH||"").trim(),a=(state.editKOA||"").trim();
+      if(h&&a){
+        koOverride[m.tag]={h,a};
+        live=mergeResults(live,[{h,a,hs:state.editH,as:state.editA,st:"FT"}],{manual:true,force:true});
+        koWin[m.tag]=state.editAdv||(state.editH>state.editA?"h":state.editH<state.editA?"a":"h");
+        saveKO();saveKOWin();saveLive();
+      }
+    }
+    else if(A==="koclear"){
+      if(koOverride[m.tag]){delete live[pairKey(koOverride[m.tag].h,koOverride[m.tag].a)];}
+      const dm=dispMatch(m);if(dm.home&&dm.away)delete live[pairKey(dm.home,dm.away)];
+      delete koOverride[m.tag];delete koWin[m.tag];saveKO();saveKOWin();saveLive();
+    }
     closeEditor();render();return;
   }
   if(e.target.id==="overlay"){closeEditor();return;}
+  const bk=e.target.closest(".bk-match");
+  if(bk){openEditor(+bk.dataset.idx);return;}
   const card=e.target.closest(".card.editable");
   if(card){openEditor(+card.dataset.idx);return;}
 });
 document.addEventListener("input",e=>{
   if(e.target.id==="fSearch"){state.fSearch=e.target.value;const pos=e.target.selectionStart;render();const inp=document.getElementById("fSearch");if(inp){inp.focus();inp.setSelectionRange(pos,pos);}}
   else if(e.target.id==="tSearch"){state.tSearch=e.target.value;state._keepScroll=true;state._focusT=true;render();}
+  else if(e.target.id==="ko-h"){state.editKOH=e.target.value;}
+  else if(e.target.id==="ko-a"){state.editKOA=e.target.value;}
 });
 document.addEventListener("change",e=>{
   if(e.target.id==="fGroup"){state.fGroup=e.target.value;render();}
 });
 
 /* ---------- boot ---------- */
+seedKnockout();
 document.getElementById("subtz").textContent=`Canada · Mexico · USA — all times ${TZ_ABBR}`;
 state._scrollLive=true;
 render();
