@@ -306,25 +306,36 @@ const SEED=[
  {h:"Brazil",a:"Morocco",hs:1,as:1,st:"FT"},
  {h:"Haiti",a:"Scotland",hs:0,as:1,st:"FT"}
 ];
-/* Real Round-of-32 matchups (fixed once groups finished), keyed by match code.
-   Home/away match the app's bracket token order. Completed games include score + winner. */
+/* Verified knockout data (as of July 4). h/a follow the official FIFA match listing.
+   win: 'h'/'a' = who advances (covers penalty shootouts, where the score is level). */
+const KO_SEED_VERSION=3;
 const KO_SEED={
+ // Round of 32 — all complete
  M73:{h:"South Africa",a:"Canada",hs:0,as:1,win:"a"},
- M74:{h:"Germany",a:"Paraguay",hs:1,as:1,win:"a"},   // Paraguay 4-3 pens
- M75:{h:"Netherlands",a:"Morocco",hs:1,as:1,win:"a"},// Morocco 3-2 pens
+ M74:{h:"Germany",a:"Paraguay",hs:1,as:1,win:"a"},    // Paraguay 4-3 pens
+ M75:{h:"Netherlands",a:"Morocco",hs:1,as:1,win:"a"}, // Morocco 3-2 pens
  M76:{h:"Brazil",a:"Japan",hs:2,as:1,win:"h"},
- M77:{h:"France",a:"Sweden"},
- M78:{h:"Ivory Coast",a:"Norway"},
- M79:{h:"Mexico",a:"Ecuador"},
- M80:{h:"England",a:"DR Congo"},
- M81:{h:"USA",a:"Bosnia & Herzegovina"},
- M82:{h:"Belgium",a:"Senegal"},
- M83:{h:"Portugal",a:"Croatia"},
- M84:{h:"Spain",a:"Austria"},
- M85:{h:"Switzerland",a:"Algeria"},
- M86:{h:"Argentina",a:"Cabo Verde"},
- M87:{h:"Colombia",a:"Ghana"},
- M88:{h:"Australia",a:"Egypt"}
+ M77:{h:"France",a:"Sweden",hs:3,as:0,win:"h"},
+ M78:{h:"Ivory Coast",a:"Norway",hs:1,as:2,win:"a"},
+ M79:{h:"Mexico",a:"Ecuador",hs:2,as:0,win:"h"},
+ M80:{h:"England",a:"DR Congo",hs:2,as:1,win:"h"},
+ M81:{h:"USA",a:"Bosnia & Herzegovina",hs:2,as:0,win:"h"},
+ M82:{h:"Belgium",a:"Senegal",hs:3,as:2,win:"h"},     // AET
+ M83:{h:"Portugal",a:"Croatia",hs:2,as:1,win:"h"},
+ M84:{h:"Spain",a:"Austria",hs:3,as:0,win:"h"},
+ M85:{h:"Switzerland",a:"Algeria",hs:2,as:0,win:"h"},
+ M86:{h:"Argentina",a:"Cabo Verde",hs:3,as:2,win:"h"},// AET
+ M87:{h:"Colombia",a:"Ghana",hs:1,as:0,win:"h"},
+ M88:{h:"Australia",a:"Egypt",hs:1,as:1,win:"a"},     // Egypt 4-2 pens
+ // Round of 16 — matchups set; results fill in live
+ M90:{h:"Canada",a:"Morocco",hs:0,as:3,win:"a"},      // Jul 4 (FT)
+ M89:{h:"Paraguay",a:"France"},                        // Jul 4
+ M91:{h:"Brazil",a:"Norway"},                          // Jul 5
+ M92:{h:"Mexico",a:"England"},                         // Jul 5
+ M93:{h:"Spain",a:"Portugal"},                         // Jul 6
+ M94:{h:"Belgium",a:"USA"},                            // Jul 6
+ M95:{h:"Egypt",a:"Argentina"},                        // Jul 7
+ M96:{h:"Switzerland",a:"Colombia"}                    // Jul 7
 };
 function mergeResults(prev,arr,opts={}){
   const next={...prev};
@@ -367,17 +378,19 @@ function loadKO(){try{const s=localStorage.getItem(LS_KO);if(s)return JSON.parse
 function saveKO(){try{localStorage.setItem(LS_KO,JSON.stringify(koOverride));}catch(e){}}
 function loadKOWin(){try{const s=localStorage.getItem(LS_KOWIN);if(s)return JSON.parse(s);}catch(e){}return {};}
 function saveKOWin(){try{localStorage.setItem(LS_KOWIN,JSON.stringify(koWin));}catch(e){}}
-/* Seed known knockout matchups/results without clobbering the user's own edits or live feed data. */
+/* Seed verified knockout facts. Versioned: when the baked data is newer than what this
+   device last applied, it force-corrects stale overrides/scores (verified facts win). */
 function seedKnockout(){
-  let ch=false;
+  let applied=0;try{applied=+localStorage.getItem("wc26_koseedv")||0;}catch(e){}
+  const force=applied<KO_SEED_VERSION;
   for(const code in KO_SEED){
     const s=KO_SEED[code];
-    if(!koOverride[code]){koOverride[code]={h:s.h,a:s.a};ch=true;}
-    if(s.win&&!koWin[code]){koWin[code]=s.win;ch=true;}
-    if(s.hs!=null){const pk=pairKey(s.h,s.a);if(!live[pk]){live=mergeResults(live,[{h:s.h,a:s.a,hs:s.hs,as:s.as,st:"FT"}]);}}
+    if(force||!koOverride[code])koOverride[code]={h:s.h,a:s.a};
+    if(s.win&&(force||!koWin[code]))koWin[code]=s.win;
+    if(s.hs!=null){const pk=pairKey(s.h,s.a);if(force||!live[pk])live=mergeResults(live,[{h:s.h,a:s.a,hs:s.hs,as:s.as,st:"FT"}],{force:true});}
   }
-  if(ch){saveKO();saveKOWin();}
-  saveLive();
+  saveKO();saveKOWin();saveLive();
+  try{localStorage.setItem("wc26_koseedv",String(KO_SEED_VERSION));}catch(e){}
 }
 function isFollowed(team){return follow.has(canon(team));}
 function toggleFollow(team){const c=canon(team);if(follow.has(c))follow.delete(c);else follow.add(c);saveFollow();}
@@ -439,29 +452,37 @@ function nextForFollowed(){
 }
 
 /* ---------- live fetch via free CORS API (best effort) ---------- */
-async function fetchDay(dateStr){
-  const url=`https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d=${dateStr}&s=Soccer`;
-  const r=await fetch(url,{cache:"no-store"});
-  if(!r.ok)throw new Error("net");
-  const j=await r.json();
-  return j.events||[];
+const TSDB="https://www.thesportsdb.com/api/v1/json/123";
+const WC_LEAGUE_ID="4429"; // FIFA World Cup on TheSportsDB
+async function getJSON(url){const r=await fetch(url,{cache:"no-store"});if(!r.ok)throw new Error("net");return r.json();}
+async function fetchWCEvents(){
+  let evs=[];
+  // 1) League-specific: full season (all 104 games incl. scores) + recent + next
+  try{const j=await getJSON(`${TSDB}/eventsseason.php?id=${WC_LEAGUE_ID}&s=2026`);if(j.events)evs=evs.concat(j.events);}catch(e){}
+  try{const j=await getJSON(`${TSDB}/eventspastleague.php?id=${WC_LEAGUE_ID}`);if(j.events)evs=evs.concat(j.events);}catch(e){}
+  try{const j=await getJSON(`${TSDB}/eventsnextleague.php?id=${WC_LEAGUE_ID}`);if(j.events)evs=evs.concat(j.events);}catch(e){}
+  // 2) Fallback: generic by-day soccer query around now
+  if(!evs.length){
+    const now=Date.now(),isoDay=ms=>new Date(ms).toISOString().slice(0,10);
+    for(const d of [isoDay(now+864e5),isoDay(now),isoDay(now-864e5)]){
+      try{const es=await getJSON(`${TSDB}/eventsday.php?d=${d}&s=Soccer`);if(es.events)evs=evs.concat(es.events);}catch(e){}
+    }
+  }
+  // de-dupe by event id
+  const seen=new Set();
+  return evs.filter(e=>{if(!e||!e.idEvent||seen.has(e.idEvent))return false;seen.add(e.idEvent);return true;});
 }
 function mapStatus(e){
   const s=(e.strStatus||"").toLowerCase(),p=(e.strProgress||"").toLowerCase();
   if(/finish|^ft$|aet|pen|after/.test(s))return"FT";
   if(/half|^ht$/.test(s)||p==="ht")return"HT";
   if(/1h|2h|live|et|in.?play|playing/.test(s)||/\d/.test(p))return"LIVE";
-  if(/not.?start|^ns$|sched|postp|cancel/.test(s))return"NS";
   return"NS";
 }
 async function fetchLive(){
   if(state.loading)return; state.loading=true; render();
   try{
-    const now=Date.now();
-    const isoDay=ms=>new Date(ms).toISOString().slice(0,10);
-    const days=[isoDay(now+2*864e5),isoDay(now+864e5),isoDay(now),isoDay(now-864e5),isoDay(now-2*864e5)];
-    let evs=[];
-    for(const d of days){try{evs=evs.concat(await fetchDay(d));}catch(e){}}
+    const evs=await fetchWCEvents();
     const wc=evs.filter(e=>e&&/world cup/i.test(e.strLeague||"")&&e.strHomeTeam&&e.strAwayTeam);
     const arr=[];
     wc.forEach(e=>{
@@ -472,8 +493,7 @@ async function fetchLive(){
     });
     if(arr.length){
       live=mergeResults(live,arr);saveLive();
-      // best-effort: resolve knockout matchups from the feed by date + venue
-      resolveKOFromFeed(arr);
+      resolveKOFromFeed(arr); // best-effort: fill future knockout matchups from the feed
     }
     state.updated=Date.now();saveUpd(state.updated);
     state.apiMsg=arr.length?null:(state.updated?"online-empty":null);
@@ -486,23 +506,23 @@ async function fetchLive(){
 function normVenue(s){return (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/stadium|estadio|field|arena|park/g,"").replace(/[^a-z]/g,"");}
 function resolveKOFromFeed(arr){
   let changed=false;
+  const koMatches=ALL.filter(m=>m.knock);
   arr.forEach(e=>{
-    // only consider matches that aren't already a known group/resolved pair
-    const koMatches=ALL.filter(m=>m.knock);
+    if(!e.d)return;
+    const eMid=Date.parse(e.d+"T12:00:00Z");if(isNaN(eMid))return;
     const cand=koMatches.filter(m=>{
-      if(koOverride[m.tag])return false; // don't clobber manual/existing
-      const dayMatch=Math.abs(localKey(m.iso)-(+String(e.d||"").replace(/-/g,"")))<=1 || fmtMD.format(m.iso)===fmtMD.format(new Date((e.d||"")+"T12:00:00Z"));
-      if(!dayMatch)return false;
+      if(koOverride[m.tag])return false; // never clobber existing (seeded/manual/prior)
+      if(Math.abs(m.iso-eMid)>36*3.6e6)return false; // within ±36h
       const v=normVenue(e.venue),mv=normVenue(m.venue),c=(e.city||"").toLowerCase();
       return (v&&mv&&(v.includes(mv)||mv.includes(v)))||(c&&m.city.toLowerCase().includes(c));
     });
     if(cand.length===1){
       const m=cand[0];
-      // only fill if this slot isn't already resolved to these same teams
       const cur=koResolved(m.tag);
       if(!(cur.h&&cur.a)){
         koOverride[m.tag]={h:e.h,a:e.a};
-        if(e.st==="FT"&&e.hs!==e.as)koWin[m.tag]=e.hs>e.as?"h":"a";
+        const st=mapStatus(e);
+        if(st==="FT"&&e.hs!==e.as)koWin[m.tag]=+e.hs>+e.as?"h":"a";
         changed=true;
       }
     }
@@ -739,8 +759,9 @@ function openEditor(idx){
   state.editIdx=idx;
   if(m.knock){
     const dm=dispMatch(m);const s=koSide(m.tag);
-    state.editKOH=dm.home&&!/^[0-9WLM]|^3rd/.test(dm.home)?dm.home:(koOverride[m.tag]?koOverride[m.tag].h:"")||"";
-    state.editKOA=dm.away&&!/^[0-9WLM]|^3rd/.test(dm.away)?dm.away:(koOverride[m.tag]?koOverride[m.tag].a:"")||"";
+    const isTok=t=>/^([12][A-L]$|W\d+$|L\d+$|3rd)/.test(t||"");
+    state.editKOH=(dm.home&&!isTok(dm.home))?dm.home:"";
+    state.editKOA=(dm.away&&!isTok(dm.away))?dm.away:"";
     const r=s.r;state.editH=r?r.hs:0;state.editA=r?r.as:0;state.editAdv=s.win||"";
   }else{
     const r=resultFor(m,live);state.editH=r?r.hs:0;state.editA=r?r.as:0;
