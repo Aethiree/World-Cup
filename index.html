@@ -308,7 +308,7 @@ const SEED=[
 ];
 /* Verified knockout data (as of July 4). h/a follow the official FIFA match listing.
    win: 'h'/'a' = who advances (covers penalty shootouts, where the score is level). */
-const KO_SEED_VERSION=3;
+const KO_SEED_VERSION=4;
 const KO_SEED={
  // Round of 32 — all complete
  M73:{h:"South Africa",a:"Canada",hs:0,as:1,win:"a"},
@@ -327,15 +327,17 @@ const KO_SEED={
  M86:{h:"Argentina",a:"Cabo Verde",hs:3,as:2,win:"h"},// AET
  M87:{h:"Colombia",a:"Ghana",hs:1,as:0,win:"h"},
  M88:{h:"Australia",a:"Egypt",hs:1,as:1,win:"a"},     // Egypt 4-2 pens
- // Round of 16 — matchups set; results fill in live
- M90:{h:"Canada",a:"Morocco",hs:0,as:3,win:"a"},      // Jul 4 (FT)
- M89:{h:"Paraguay",a:"France"},                        // Jul 4
- M91:{h:"Brazil",a:"Norway"},                          // Jul 5
- M92:{h:"Mexico",a:"England"},                         // Jul 5
- M93:{h:"Spain",a:"Portugal"},                         // Jul 6
- M94:{h:"Belgium",a:"USA"},                            // Jul 6
- M95:{h:"Egypt",a:"Argentina"},                        // Jul 7
- M96:{h:"Switzerland",a:"Colombia"}                    // Jul 7
+ // Round of 16 — complete except Switzerland v Colombia (Jul 7 late)
+ M90:{h:"Canada",a:"Morocco",hs:0,as:3,win:"a"},
+ M89:{h:"Paraguay",a:"France",hs:0,as:1,win:"a"},
+ M91:{h:"Brazil",a:"Norway",hs:1,as:2,win:"a"},
+ M92:{h:"Mexico",a:"England",hs:2,as:3,win:"a"},
+ M93:{h:"Portugal",a:"Spain",hs:0,as:1,win:"a"},
+ M94:{h:"USA",a:"Belgium",hs:1,as:4,win:"a"},
+ M95:{h:"Argentina",a:"Egypt",hs:3,as:2,win:"h"},
+ M96:{h:"Switzerland",a:"Colombia"}                    // Jul 7, in play/pending
+ // QFs auto-resolve from winners: France–Morocco (Jul 9), Spain–Belgium (Jul 10),
+ // Norway–England (Jul 11), Argentina–W96 (Jul 11)
 };
 function mergeResults(prev,arr,opts={}){
   const next={...prev};
