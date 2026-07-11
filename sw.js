@@ -1,5 +1,5 @@
 /* World Cup 26 — service worker */
-const CACHE = "wc26-v7";
+const CACHE = "wc26-v8";
 const SHELL = [
   "./",
   "./index.html",
