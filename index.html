@@ -308,7 +308,7 @@ const SEED=[
 ];
 /* Verified knockout data (as of July 4). h/a follow the official FIFA match listing.
    win: 'h'/'a' = who advances (covers penalty shootouts, where the score is level). */
-const KO_SEED_VERSION=5;
+const KO_SEED_VERSION=6;
 const KO_SEED={
  // Round of 32 — all complete
  M73:{h:"South Africa",a:"Canada",hs:0,as:1,win:"a"},
@@ -338,8 +338,10 @@ const KO_SEED={
  M96:{h:"Switzerland",a:"Colombia",hs:0,as:0,win:"h"},// Switzerland 4-3 pens
  // Quarterfinals — Jul 11 games (Norway–England, Argentina–Switzerland) pending
  M97:{h:"France",a:"Morocco",hs:2,as:0,win:"h"},
- M98:{h:"Spain",a:"Belgium",hs:2,as:1,win:"h"}
- // M99 Norway–England & M100 Argentina–Switzerland auto-resolve; SF1 = France v Spain (Jul 14)
+ M98:{h:"Spain",a:"Belgium",hs:2,as:1,win:"h"},
+ M99:{h:"Norway",a:"England",hs:1,as:2,win:"a"},      // AET, Bellingham brace
+ M100:{h:"Argentina",a:"Switzerland",hs:3,as:1,win:"h"}// AET
+ // Semis auto-resolve: M101 France v Spain (Jul 14), M102 England v Argentina (Jul 15)
 };
 function mergeResults(prev,arr,opts={}){
   const next={...prev};
